@@ -1,8 +1,8 @@
-import io 
+import io
 import torch
 import sys
 import os
-import pathlib 
+import pathlib
 import numpy as np
 import cv2
 from PIL import Image
@@ -11,15 +11,6 @@ from tensorflow.keras.applications.mobilenet_v2 import preprocess_input
 
 # Fix PosixPath issue on Windows
 pathlib.PosixPath = pathlib.WindowsPath
-
-# Add yolov5 to sys.path
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'yolov5')))
-
-# Import YOLOv5 classification model if needed
-import models.yolo
-torch.serialization.add_safe_globals({
-    "models.yolo.ClassificationModel": models.yolo.ClassificationModel
-})
 
 # Paths
 YOLO_PATH = os.path.join(os.path.dirname(__file__), '..', 'best.pt')
@@ -34,7 +25,7 @@ DISEASE_LABELS = [
     "powdery_mildew", "septoria"
 ]
 
-# Load models
+# Load YOLOv5 model
 def load_yolo_model():
     model = torch.hub.load('ultralytics/yolov5', 'custom', path=YOLO_PATH, force_reload=False)
     model.conf = 0.6
@@ -49,7 +40,7 @@ def predict_pipeline(image_bytes: bytes) -> dict:
     image = Image.open(io.BytesIO(image_bytes)).convert('RGB')
     img_array = np.array(image)
 
-    # Detect leaf
+    # Detect leaf with YOLOv5
     results = yolo_model(img_array)
     detections = results.pandas().xyxy[0]
     leaf_detections = detections[detections['name'] == 'leaf']
