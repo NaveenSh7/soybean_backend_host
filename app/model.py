@@ -1,21 +1,16 @@
 import io
 import torch
-import sys
 import os
-import pathlib
 import numpy as np
 import cv2
 from PIL import Image
 from tensorflow.keras.models import load_model
 from tensorflow.keras.applications.mobilenet_v2 import preprocess_input
 
-# DO NOT override PosixPath on Linux
-# Remove: pathlib.PosixPath = pathlib.WindowsPath
-
-# Paths
-YOLO_PATH = os.path.join(os.path.dirname(__file__), '..', 'best.pt')
-HEALTH_MODEL_PATH = os.path.join(os.path.dirname(__file__), '..', 'mobilenetv2_healthy_best.h5')
-DISEASE_MODEL_PATH = os.path.join(os.path.dirname(__file__), '..', 'mobilenetv2_soybean_best_old.h5')
+# Absolute paths to model files
+YOLO_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'best.pt'))
+HEALTH_MODEL_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'mobilenetv2_healthy_best.h5'))
+DISEASE_MODEL_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'mobilenetv2_soybean_best_old.h5'))
 
 # Class labels
 HEALTH_LABELS = ['healthy', 'unhealthy']
@@ -25,22 +20,24 @@ DISEASE_LABELS = [
     "powdery_mildew", "septoria"
 ]
 
-# Load YOLOv5 model from torch hub
+# Load YOLOv5 model
 def load_yolo_model():
     model = torch.hub.load('ultralytics/yolov5', 'custom', path=YOLO_PATH, force_reload=False)
     model.conf = 0.6
     return model
 
+# Load models at startup
 yolo_model = load_yolo_model()
 health_model = load_model(HEALTH_MODEL_PATH)
 disease_model = load_model(DISEASE_MODEL_PATH)
 
+# Prediction pipeline
 def predict_pipeline(image_bytes: bytes) -> dict:
     # Load image
     image = Image.open(io.BytesIO(image_bytes)).convert('RGB')
     img_array = np.array(image)
 
-    # Detect leaf
+    # Detect leaf using YOLOv5
     results = yolo_model(img_array)
     detections = results.pandas().xyxy[0]
     leaf_detections = detections[detections['name'] == 'leaf']
@@ -51,7 +48,7 @@ def predict_pipeline(image_bytes: bytes) -> dict:
             "message": "No leaf detected"
         }
 
-    # Crop best detection
+    # Use the best detection box
     best_leaf = leaf_detections.iloc[0]
     x1, y1, x2, y2 = map(int, [
         best_leaf['xmin'], best_leaf['ymin'],
@@ -59,7 +56,7 @@ def predict_pipeline(image_bytes: bytes) -> dict:
     ])
     leaf_crop = img_array[y1:y2, x1:x2]
 
-    # Preprocess for MobileNetV2
+    # Preprocessing function
     def preprocess(img):
         img = cv2.resize(img, (224, 224))
         if len(img.shape) == 2:
@@ -96,33 +93,3 @@ def predict_pipeline(image_bytes: bytes) -> dict:
         "confidence": disease_confidence
     }
 
-
-''' only for disedased
-import torch
-import sys
-import os
-import pathlib
-
-# ✅ Fix for PosixPath issue on Windows
-pathlib.PosixPath = pathlib.WindowsPath
-
-# 🔧 Add yolov5 to path
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'yolov5')))
-
-# ✅ Import and allow the custom model class for deserialization
-import models.yolo
-torch.serialization.add_safe_globals({
-    "models.yolo.ClassificationModel": models.yolo.ClassificationModel
-})
-
-# Model path
-MODEL_PATH = os.path.join(os.path.dirname(__file__), '..', 'best.pt')
-
-def load_model():
-    model = torch.load(MODEL_PATH, map_location=torch.device("cpu"), weights_only=False)
-    if isinstance(model, dict) and 'model' in model:
-        model = model['model'].float().fuse().eval()
-    return model
-
-# Load once
-model = load_model()'''
