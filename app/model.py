@@ -22,7 +22,9 @@ DISEASE_LABELS = [
 
 # Load YOLOv5 model
 def load_yolo_model():
-    model = torch.hub.load('ultralytics/yolov5', 'custom', path=YOLO_PATH, force_reload=False)
+   YOLOV5_LOCAL_PATH = os.path.join(os.path.dirname(__file__), '..', 'yolov5')
+model = torch.hub.load(YOLOV5_LOCAL_PATH, 'custom', path=YOLO_PATH, source='local')
+
     model.conf = 0.6
     return model
 
