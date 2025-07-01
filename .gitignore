@@ -4,5 +4,4 @@ __pycache__/
 *.pyo
 *.pyd
 *.pth
-yolov5/
 .DS_Store
