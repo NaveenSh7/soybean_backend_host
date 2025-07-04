@@ -1,9 +1,10 @@
 services:
   - type: web
     name: soybean-backend
-    env: python
+    runtime: python
     buildCommand: pip install -r requirements.txt
-    startCommand: ./start.sh
+    startCommand: bash start.sh
     envVars:
       - key: PORT
-        value: 10000  # This can be any value; Render replaces it at runtime
+        value: 10000  # any dummy value; Render overrides this automatically
+    autoDeploy: true
