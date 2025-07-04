@@ -2,6 +2,8 @@ from fastapi import FastAPI, File, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from app.model import predict_pipeline
 
+import os
+
 app = FastAPI()
 
 # Allow frontend connection
@@ -23,6 +25,11 @@ async def predict(file: UploadFile = File(...)):
     result = predict_pipeline(contents)
     return result
 
+#  for Render deployment
+if __name__ == "__main__":
+    import uvicorn
+    port = int(os.environ.get("PORT", 8000))
+    uvicorn.run(app, host="0.0.0.0", port=port)
 
 # soybean_backend/app/main.py
 '''from fastapi import FastAPI, File, UploadFile
